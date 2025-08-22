@@ -13,9 +13,24 @@ API_KEY = os.getenv("GOOGLE_API_KEY") or st.text_input(
     "Enter your Google API Key", type="password"
 )
 
-# Veo API endpoints
+# -----------------------------
+# MODEL SELECTOR
+# -----------------------------
+model_options = [
+    "veo-3.0-generate-preview",
+    "veo-3.0-fast-generate-preview",
+    "veo-2.0-generate-001"
+]
+
+# Slider-like selection (Streamlit doesn't have a literal slider for strings,
+# so we use select_slider to mimic it)
+MODEL = st.select_slider(
+    "Select Veo Model",
+    options=model_options,
+    value=model_options[0]
+)
+
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-MODEL = "veo-1.5"  # Change if your account uses a different model
 
 # -----------------------------
 # FUNCTIONS
@@ -61,7 +76,7 @@ if st.button("Generate Video"):
         st.error("Please enter a prompt.")
     else:
         try:
-            with st.spinner("Starting video generation..."):
+            with st.spinner(f"Starting video generation with model: {MODEL}"):
                 op_name = start_video_generation(prompt)
 
             with st.spinner("Waiting for video to be ready..."):
