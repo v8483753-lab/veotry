@@ -1,19 +1,19 @@
-import os
 import time
 import requests
 import streamlit as st
 
 # ---------------- CONFIG ----------------
-API_KEY = os.getenv("GOOGLE_API_KEY", "PASTE-YOUR-KEY-HERE")  # safer via env var
+# Paste your API key here
+API_KEY = "AIzaSyA4tIL3TxJEBrpmAXMLUfsX9ue4CSR9a4E"  # <-- Replace with your key
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-MODEL = "veo-3.0-generate-preview"  # ✅ confirmed working from your UI
+MODEL = "veo-3.0-generate-preview"  # ✅ confirmed working
 
 # ---------------- UI ----------------
 st.set_page_config(page_title="Veo 3 Video Generator", page_icon="🎥", layout="centered")
 st.title("🎥 Veo 3.0 Video Generator")
 
-if not API_KEY or API_KEY == "PASTE-YOUR-KEY-HERE":
-    st.error("Please set your API key in the code or as an environment variable GOOGLE_API_KEY.")
+if not API_KEY or API_KEY.strip() == "" or API_KEY == "YOUR_API_KEY_HERE":
+    st.error("Please paste your API key into the code before running.")
     st.stop()
 
 prompt = st.text_area("Enter your video prompt", height=150)
