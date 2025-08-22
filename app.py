@@ -3,9 +3,9 @@ import requests
 import streamlit as st
 
 # ---------------- CONFIG ----------------
-API_KEY = "AIzaSyA4tIL3TxJEBrpmAXMLUfsX9ue4CSR9a4E"  # <-- paste your API key here
+API_KEY = "AIzaSyA4tIL3TxJEBrpmAXMLUfsX9ue4CSR9a4E"  # <-- paste your key here
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-MODEL = "veo-3.0-generate-preview"  # confirmed working
+MODEL = "veo-3.0-generate-preview"
 
 # ---------------- UI ----------------
 st.set_page_config(page_title="Veo 3 Video Generator", page_icon="🎥", layout="centered")
@@ -88,9 +88,26 @@ if st.button("Generate Video"):
             video_url = None
 
         if video_url:
-            st.success("✅ Video ready!")
-            st.video(video_url)
-            st.markdown(f"[📥 Download Video]({video_url})", unsafe_allow_html=True)
+            st.success("✅ Video ready! Fetching file...")
+
+            # Fetch video bytes with API key
+            headers = {"Authorization": f"Bearer {API_KEY}"}
+            video_resp = requests.get(video_url, headers=headers)
+            if video_resp.status_code == 200:
+                video_bytes = video_resp.content
+
+                # Play video inline
+                st.video(video_bytes)
+
+                # Download button
+                st.download_button(
+                    label="📥 Download Video",
+                    data=video_bytes,
+                    file_name="generated_video.mp4",
+                    mime="video/mp4"
+                )
+            else:
+                st.error(f"Failed to fetch video file: {video_resp.status_code}")
         else:
             st.warning("No video URL found in response.")
     else:
