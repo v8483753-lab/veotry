@@ -83,16 +83,19 @@ if st.button("Generate Video"):
 
         # Extract video URL from nested structure
         try:
-            video_url = video_info["generateVideoResponse"]["generatedSamples"][0]["video"]["uri"]
+            raw_url = video_info["generateVideoResponse"]["generatedSamples"][0]["video"]["uri"]
+            # Append API key for direct access
+            if "?alt=media" in raw_url:
+                video_url = f"{raw_url}&key={API_KEY}"
+            else:
+                video_url = f"{raw_url}?key={API_KEY}"
         except (KeyError, IndexError, TypeError):
             video_url = None
 
         if video_url:
             st.success("✅ Video ready! Fetching file...")
 
-            # Fetch video bytes with API key
-            headers = {"Authorization": f"Bearer {API_KEY}"}
-            video_resp = requests.get(video_url, headers=headers)
+            video_resp = requests.get(video_url)
             if video_resp.status_code == 200:
                 video_bytes = video_resp.content
 
