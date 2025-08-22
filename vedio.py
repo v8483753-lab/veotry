@@ -1,65 +1,90 @@
 import streamlit as st
 import requests
 import time
+import os
 
-# --- Page Setup ---
-st.set_page_config(page_title="Veo Video Generator", layout="centered")
-st.title("🎥 Veo Video Generator")
-st.markdown("Generate videos using Google's Veo models with live status tracking.")
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+st.set_page_config(page_title="Veo Video Generator", page_icon="🎬")
 
-# --- Inputs ---
-api_key = st.text_input("🔑 Enter your Google API Key", type="password")
-prompt = st.text_area("📝 Enter your video prompt", placeholder="e.g. a boy dancing in the rain")
-
-# --- Model Selector ---
-model = st.radio(
-    "🧠 Select Veo Model",
-    options=[
-        "veo-3.0-generate-preview",
-        "veo-3.0-fast-generate-preview",
-        "veo-2.0-generate-001"
-    ],
-    horizontal=True
+# Get API key from environment or input
+API_KEY = os.getenv("GOOGLE_API_KEY") or st.text_input(
+    "Enter your Google API Key", type="password"
 )
 
-# --- Generate Button ---
-if st.button("🚀 Generate Video"):
-    if not api_key or not prompt:
-        st.error("Please enter both your API key and a prompt.")
-        st.stop()
+# Veo API endpoints
+API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+MODEL = "veo-1.5"  # Change if your account uses a different model
 
-    st.markdown("### 📄 Prompt Preview")
-    st.code(prompt)
-    st.markdown(f"**Selected Model:** `{model}`")
+# -----------------------------
+# FUNCTIONS
+# -----------------------------
+def start_video_generation(prompt: str) -> str:
+    """Send prompt to Veo API and return operation name."""
+    url = f"{API_BASE}/models/{MODEL}:generateVideo?key={API_KEY}"
+    payload = {"prompt": {"text": prompt}}
+    r = requests.post(url, json=payload)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("name")  # Operation name for polling
 
-    # Step 1: Trigger video generation
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:predictLongRunning"
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "prompt": {
-            "text": prompt
-        }
-    }
 
-    try:
-        with st.status("⏳ Sending request to Veo API...", expanded=True) as status:
-            resp = requests.post(f"{endpoint}?key={api_key}", headers=headers, json=payload)
-            if resp.status_code != 200:
-                raise ValueError(f"API Error: {resp.status_code} - {resp.text}")
+def poll_operation(operation_name: str, timeout=300, interval=10):
+    """Poll until the operation is done or timeout."""
+    url = f"{API_BASE}/operations/{operation_name}?key={API_KEY}"
+    start_time = time.time()
 
-            operation = resp.json()
-            operation_name = operation.get("name")
-            if not operation_name:
-                raise ValueError("No operation name returned from API.")
+    while time.time() - start_time < timeout:
+        r = requests.get(url)
+        r.raise_for_status()
+        data = r.json()
 
-            status.update(label="✅ Request accepted. Polling for result...", state="running")
+        if data.get("done"):
+            return data
+        time.sleep(interval)
 
-        # Step 2: Poll for completion
-        poll_url = f"https://generativelanguage.googleapis.com/v1beta/operations/{operation_name}?key={api_key}"
-        max_attempts = 20
-        for attempt in range(1, max_attempts + 1):
-            poll_resp = requests.get(poll_url)
-            if poll_resp.status_code != 200:
-                raise ValueError(f"Polling Error: {poll_resp.status_code} - {poll_resp.text}")
+    return {"error": "Timeout waiting for video"}
 
-           
+
+# -----------------------------
+# UI
+# -----------------------------
+st.title("🎬 Veo Video Generator")
+
+prompt = st.text_area("Enter your cinematic prompt", height=100)
+
+if st.button("Generate Video"):
+    if not API_KEY:
+        st.error("Please enter your API key.")
+    elif not prompt.strip():
+        st.error("Please enter a prompt.")
+    else:
+        try:
+            with st.spinner("Starting video generation..."):
+                op_name = start_video_generation(prompt)
+
+            with st.spinner("Waiting for video to be ready..."):
+                result = poll_operation(op_name)
+
+            if "error" in result:
+                st.error(result["error"])
+                st.json(result)
+            elif "response" in result:
+                # Adjust this path if your API returns a different structure
+                video_url = (
+                    result["response"]
+                    .get("video", {})
+                    .get("uri")
+                )
+                if video_url:
+                    st.video(video_url)
+                else:
+                    st.warning("Video generated but no URL found.")
+                    st.json(result)
+            else:
+                st.warning("Unexpected API response.")
+                st.json(result)
+
+        except requests.exceptions.RequestException as e:
+            st.error(f"Request failed: {e}")
