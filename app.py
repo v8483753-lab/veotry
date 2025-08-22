@@ -3,7 +3,7 @@ import requests
 import streamlit as st
 
 # ---------------- CONFIG ----------------
-API_KEY = "AIzaSyA4tIL3TxJEBrpmAXMLUfsX9ue4CSR9a4E"  # <-- paste your key here
+API_KEY = "AIzaSyA4tIL3TxJEBrpmAXMLUfsX9ue4CSR9a4E"  # <-- paste your API key here
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 MODEL = "veo-3.0-generate-preview"  # confirmed working
 
@@ -81,11 +81,18 @@ if st.button("Generate Video"):
         st.subheader("Video Generation Response")
         st.json(video_info)
 
-        video_url = video_info.get("videoUri") or video_info.get("videoUrl")
+        # Extract video URL from nested structure
+        try:
+            video_url = video_info["generateVideoResponse"]["generatedSamples"][0]["video"]["uri"]
+        except (KeyError, IndexError, TypeError):
+            video_url = None
+
         if video_url:
+            st.success("✅ Video ready!")
             st.video(video_url)
+            st.markdown(f"[📥 Download Video]({video_url})", unsafe_allow_html=True)
         else:
-            st.warning("No direct video URL found in response.")
+            st.warning("No video URL found in response.")
     else:
         st.error("No 'response' field in final status.")
         st.json(status_data)
